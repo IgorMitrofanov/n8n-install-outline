@@ -5,7 +5,7 @@ This override forces outbound HTTP(S) traffic from n8n services through an Outli
 ## Files
 
 - `docker-compose.outline.yml` – Compose overlay (no secrets).
-- `.env.vpn.example` – Template for Outline connection settings (secrets not committed).
+- `.env.vpn.example` – Template for Outline connection settings.
 
 ## Setup
 
