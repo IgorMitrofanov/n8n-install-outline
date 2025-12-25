@@ -1,145 +1,187 @@
-version: "3.9"
-
-# ============================================================================
-# Outline / Shadowsocks outbound routing for n8n-install
-#
-# Goal:
-#   - Route ALL outbound HTTP(S) traffic from n8n (and workers) via Outline.
-#   - No secrets in git: server parameters come from .env.vpn.
-#   - Provide a kill-switch so traffic does NOT leak directly if Outline is down.
-#
-# Notes:
-#   - This is SOCKS5 proxying (Outline is Shadowsocks). Not a L3 VPN tunnel.
-#   - We use socks5h:// to proxy DNS resolution through SOCKS.
-#   - Most n8n integrations are TCP/HTTPS -> covered. UDP is not handled here.
-#
-# Usage:
-#   docker compose --env-file .env --env-file .env.vpn \
-#     -f docker-compose.yml -f overrides/outline/docker-compose.outline.yml up -d
-# ============================================================================
-
 services:
-  # --------------------------------------------------------------------------
-  # Shadowsocks local client (SOCKS5)
-  # --------------------------------------------------------------------------
+  # ------------------------------------------------------------
+  # outline: shadowsocks client (sslocal-rust)
+  # Provides SOCKS5 proxy inside Docker network on 0.0.0.0:1080
+  # ------------------------------------------------------------
   outline:
     image: ghcr.io/shadowsocks/sslocal-rust:latest
     container_name: outline
     restart: unless-stopped
-    environment:
-      SS_REMOTE_HOST: "${OUTLINE_HOST}"
-      SS_REMOTE_PORT: "${OUTLINE_PORT}"
-      SS_PASSWORD: "${OUTLINE_PASSWORD}"
-      SS_METHOD: "${OUTLINE_METHOD}"
-      SS_LOCAL_ADDR: "0.0.0.0"
-      SS_LOCAL_PORT: "1080"
-    networks:
-      - outline-net
+
+    volumes:
+      - ./overrides/outline/sslocal.json:/etc/shadowsocks-rust/config.json:ro
+
+    # IMPORTANT:
+    # sslocal-rust uses -c (config file). There is NO -p option.
+    # Docs/examples: Shadowsocks config includes local_port=1080 etc.
+    # https://shadowsocks.org/doc/configs.html
+    command: 
+      - "sslocal"
+      - "-c"
+      - "/etc/shadowsocks-rust/config.json"
+
     expose:
       - "1080"
+
+    # Healthcheck: verify that port 1080 is LISTEN (0A) in /proc/net/tcp
+    # /proc/net/tcp state 0A = LISTEN
+    # local port 1080 = 0x0438
+    # Ref: /proc/net/tcp format description
+    # https://jrehkemper.de/content/linux/procfs/proc-net/proc_net_tcp/
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 1080 || exit 1"]
+      test:
+        - CMD-SHELL
+        - |
+          awk 'NR>1 {print $2, $4}' /proc/net/tcp \
+            | grep -qE '(^| )00000000:0438 0A$'
       interval: 10s
       timeout: 3s
       retries: 10
+      start_period: 5s
 
-  # --------------------------------------------------------------------------
-  # Egress gateway with kill-switch
-  #
-  # Why:
-  #   If you only set HTTP_PROXY, some tools/libraries may still attempt direct
-  #   connections (or DNS leaks). This gateway is a place to enforce policies.
-  #
-  # What it does:
-  #   - Starts redsocks (transparent TCP proxy) configured to relay to SOCKS5.
-  #   - Sets OUTPUT policy to DROP (kill-switch) and allows only:
-  #       * loopback
-  #       * established/related
-  #       * connection to Outline server
-  #
-  # Important:
-  #   This kill-switch protects the gateway container itself from leaking.
-  #   For strict enforcement for ALL traffic from n8n container (including non-proxy apps),
-  #   we would add TPROXY/REDIRECT rules on the n8n container namespace or host.
-  #   Start with this; extend if needed.
-  # --------------------------------------------------------------------------
-  vpn-egress:
-    image: redsockscap/redsocks:latest
-    container_name: vpn-egress
+  # ------------------------------------------------------------
+  # privoxy: converts HTTP proxy -> SOCKS5 (outline:1080)
+  # n8n and workers will use http://privoxy:8118 as http_proxy/https_proxy
+  # ------------------------------------------------------------
+  privoxy:
+    image: vimagick/privoxy:latest
+    container_name: privoxy
     restart: unless-stopped
+    volumes:
+      - ./overrides/outline/privoxy/config:/etc/privoxy/config:ro
     depends_on:
       outline:
         condition: service_healthy
-    cap_add:
-      - NET_ADMIN
+
+    ports:
+      # optional (for debugging from host). Usually you don't need to expose it.
+      # - "8118:8118"
+      - "127.0.0.1:8118:8118"
+
     environment:
-      REDSOCKS_RELAY_ADDR: "outline"
-      REDSOCKS_RELAY_PORT: "1080"
-      REDSOCKS_RELAY_TYPE: "socks5"
-      REDSOCKS_LOCAL_PORT: "12345"
-    networks:
-      - outline-net
-    command: >
-      sh -c '
-        echo "[vpn-egress] kill-switch: OUTPUT=DROP" &&
-        iptables -P OUTPUT DROP &&
-        iptables -A OUTPUT -o lo -j ACCEPT &&
-        iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &&
-        iptables -A OUTPUT -d ${OUTLINE_HOST} -p tcp --dport ${OUTLINE_PORT} -j ACCEPT &&
-        echo "[vpn-egress] starting redsocks..." &&
-        /usr/sbin/redsocks -c /etc/redsocks.conf
-      '
+      # This image reads env and generates forwarding config.
+      # If your image behaves differently, we’ll switch to a mounted config.
+      FORWARD_SOCKS5: / outline:1080 .
 
-  # --------------------------------------------------------------------------
-  # n8n service override
-  # --------------------------------------------------------------------------
-  n8n:
-    depends_on:
-      outline:
-        condition: service_healthy
-    networks:
-      - outline-net
-    environment:
-      # Force outbound connections via Outline SOCKS.
-      # socks5h -> hostname resolution happens through the proxy (prevents DNS leak).
-      HTTP_PROXY: "socks5h://outline:1080"
-      HTTPS_PROXY: "socks5h://outline:1080"
-      ALL_PROXY: "socks5h://outline:1080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8118/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
-      # Keep internal service discovery local.
-      NO_PROXY: "localhost,127.0.0.1,::1,postgres,db,redis,valkey,prometheus,grafana"
-
-  # --------------------------------------------------------------------------
-  # n8n worker override (exists when N8N_WORKER_COUNT>0 and profile n8n enabled)
-  # --------------------------------------------------------------------------
-  n8n-worker:
-    depends_on:
-      outline:
-        condition: service_healthy
-    networks:
-      - outline-net
-    environment:
-      HTTP_PROXY: "socks5h://outline:1080"
-      HTTPS_PROXY: "socks5h://outline:1080"
-      ALL_PROXY: "socks5h://outline:1080"
-      NO_PROXY: "localhost,127.0.0.1,::1,postgres,db,redis,valkey,n8n,prometheus,grafana"
-
-  # --------------------------------------------------------------------------
-  # Monitoring services (optional)
+  # ------------------------------------------------------------
+  # Force n8n through proxy:
+  # We set HTTP(S)_PROXY to privoxy.
+  # NO_PROXY must include all internal docker service names.
   #
-  # In this stack, monitoring is profile-driven. They usually don't need egress.
-  # We attach them to outline-net to keep service discovery consistent if you
-  # later restrict default network egress.
-  # --------------------------------------------------------------------------
-  prometheus:
-    networks:
-      - outline-net
+  # IMPORTANT:
+  # This does NOT "NAT all traffic through VPN at kernel level".
+  # It only forces apps that respect HTTP proxy env vars.
+  # n8n does for HTTP(S) requests, node-fetch, axios, etc.
+  # ------------------------------------------------------------
+  n8n:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
 
-  grafana:
-    networks:
-      - outline-net
+      # keep internal traffic direct
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
 
-networks:
-  outline-net:
-    name: outline-net
-    driver: bridge
+  # ------------------------------------------------------------
+  # n8n-worker-* come from docker-compose.n8n-workers.yml.
+  # We add proxy env vars to ALL of them using extends-like merge.
+  #
+  # Docker Compose doesn't support wildcard names, so we patch them explicitly
+  # (your generator currently makes n8n-worker-1..n).
+  # ------------------------------------------------------------
+
+  n8n-worker-1:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-1,n8n-runner-1
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-1,n8n-runner-1
+
+  n8n-worker-2:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-2,n8n-runner-2
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-2,n8n-runner-2
+
+  n8n-worker-3:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-3,n8n-runner-3
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-3,n8n-runner-3
+
+  n8n-worker-4:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-4,n8n-runner-4
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-4,n8n-runner-4
+
+  n8n-worker-5:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-5,n8n-runner-5
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-5,n8n-runner-5
