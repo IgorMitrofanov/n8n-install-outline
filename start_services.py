@@ -237,7 +237,10 @@ def start_local_ai():
 
     # Now, start the services using the newly built images. No --build needed as we just built.
     print("Starting containers...")
-    up_cmd = ["docker", "compose", "-p", "localai"] + compose_files + ["up", "-d"]
+    up_cmd = ["docker", "compose"]
+    if os.path.exists(".env.vpn"):
+        up_cmd += ["--env-file", ".env", "--env-file", ".env.vpn"]
+    up_cmd += [ "-p", "localai"] + compose_files + ["up", "-d"]
     run_command(up_cmd)
 
 def generate_searxng_secret_key():
