@@ -120,11 +120,17 @@ services:
       NO_PROXY: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-1,n8n-runner-1
+        n8n,n8n-import,n8n-worker-1,n8n-runner-1,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
       no_proxy: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-1,n8n-runner-1
+        n8n,n8n-import,n8n-worker-1,n8n-runner-1,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
 
   n8n-worker-2:
     environment:
@@ -135,11 +141,17 @@ services:
       NO_PROXY: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-2,n8n-runner-2
+        n8n,n8n-import,n8n-worker-2,n8n-runner-2,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
       no_proxy: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-2,n8n-runner-2
+        n8n,n8n-import,n8n-worker-2,n8n-runner-2,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
 
   n8n-worker-3:
     environment:
@@ -150,11 +162,17 @@ services:
       NO_PROXY: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-3,n8n-runner-3
+        n8n,n8n-import,n8n-worker-3,n8n-runner-3,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
       no_proxy: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-3,n8n-runner-3
+        n8n,n8n-import,n8n-worker-3,n8n-runner-3,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
 
   n8n-worker-4:
     environment:
@@ -165,11 +183,17 @@ services:
       NO_PROXY: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-4,n8n-runner-4
+        n8n,n8n-import,n8n-worker-4,n8n-runner-4,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
       no_proxy: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-4,n8n-runner-4
+        n8n,n8n-import,n8n-worker-4,n8n-runner-4,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
 
   n8n-worker-5:
     environment:
@@ -180,8 +204,119 @@ services:
       NO_PROXY: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-5,n8n-runner-5
+        n8n,n8n-import,n8n-worker-5,n8n-runner-5,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
       no_proxy: >-
         localhost,127.0.0.1,
         postgres,redis,caddy,outline,privoxy,
-        n8n,n8n-import,n8n-worker-5,n8n-runner-5
+        n8n,n8n-import,n8n-worker-5,n8n-runner-5,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+
+  n8n-runner-1:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-1,n8n-runner-1,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-1,n8n-runner-1,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+
+  n8n-runner-2:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-2,n8n-runner-2,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-2,n8n-runner-2,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+
+  n8n-runner-3:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-3,n8n-runner-3,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-3,n8n-runner-3,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+
+  n8n-runner-4:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-4,n8n-runner-4,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-4,n8n-runner-4,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+
+  n8n-runner-5:
+    environment:
+      http_proxy: http://privoxy:8118
+      https_proxy: http://privoxy:8118
+      HTTP_PROXY: http://privoxy:8118
+      HTTPS_PROXY: http://privoxy:8118
+      NO_PROXY: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-5,n8n-runner-5,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
+      no_proxy: >-
+        localhost,127.0.0.1,
+        postgres,redis,caddy,outline,privoxy,
+        n8n,n8n-import,n8n-worker-5,n8n-runner-5,
+        qdrant,weaviate,neo4j,ollama,
+        searxng,crawl4ai,gotenberg,langfuse-web,langfuse-worker,flowise,
+        docling,postiz,ragflow,ragapp,open-webui,comfyui,waha,libretranslate,paddleocr,gost
